@@ -1,0 +1,596 @@
+<style>
+    /* Custom Scrollbar untuk tabel */
+    .custom-scrollbar::-webkit-scrollbar {
+        height: 6px;
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
+
+<!-- Library untuk fitur Download ZIP -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<!-- Tambahkan Supabase JS agar tidak error "undefined" jika file dibuka langsung (Standalone) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<div class="space-y-6 w-full max-w-[90rem] mx-auto">
+    
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div class="space-y-1">
+            <div class="flex items-center gap-2 text-sm text-brand-orange font-semibold mb-1">
+                <i class="fa-solid fa-folder-open"></i>
+                <span>Administrasi Data</span>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-900 tracking-tight">Manajemen Berkas Asesi</h3>
+            <p class="text-sm text-slate-500">Verifikasi, kelola, dan validasi dokumen persyaratan dari calon asesi.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-sm font-medium text-slate-600">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Total <span id="totalDataCount" class="font-bold text-slate-900">0</span> Data
+            </div>
+            <button onclick="fetchAsesiData()" class="group inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium rounded-xl transition-all shadow-sm focus:ring-2 focus:ring-slate-900">
+                <i class="fa-solid fa-rotate-right group-hover:rotate-180 transition-transform duration-500"></i>
+                <span>Segarkan Data</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col lg:flex-row gap-4 items-center justify-between">
+        <div class="relative w-full lg:flex-1 max-w-2xl">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input 
+                type="text" 
+                id="searchInput"
+                placeholder="Cari berdasarkan nama, email, no. telp, atau instansi..." 
+                class="w-full pl-11 pr-4 py-2.5 text-sm text-slate-700 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-all placeholder:text-slate-400"
+            >
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <div class="w-full sm:w-56 shrink-0 relative">
+                <select id="filterSkema" class="w-full pl-4 pr-10 py-2.5 text-sm text-slate-700 bg-slate-50/50 border border-slate-200 rounded-xl appearance-none focus:outline-none focus:border-brand-orange focus:ring-4 transition-all cursor-pointer">
+                    <option value="">Semua Skema Sertifikasi</option>
+                    <option value="AUDITOR">Auditor</option>
+                    <option value="PCUA">PCUA</option>
+                    <option value="PCUE">PCUE</option>
+                    <option value="PCUL">PCUL</option>
+                    <option value="POIPPU">POIPPU</option>
+                    <option value="POPAL">POPAL</option>
+                    <option value="PPPA">PPPA</option>
+                    <option value="PPPU">PPPU</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+            </div>
+
+            <div class="w-full sm:w-48 shrink-0 relative">
+                <select id="filterStatus" class="w-full pl-4 pr-10 py-2.5 text-sm text-slate-700 bg-slate-50/50 border border-slate-200 rounded-xl appearance-none focus:outline-none focus:border-brand-orange focus:ring-4 transition-all cursor-pointer">
+                    <option value="">Semua Status Berkas</option>
+                    <option value="Lengkap">Lengkap</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Revisi">Revisi</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                    <tr class="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                        <th class="py-4 px-6 rounded-tl-2xl">Asesi</th>
+                        <th class="py-4 px-6">Instansi & Kontak</th>
+                        <th class="py-4 px-6">Skema Diambil</th>
+                        <th class="py-4 px-6">Status Berkas</th>
+                        <th class="py-4 px-6 text-center rounded-tr-2xl">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBodyAsesi" class="divide-y divide-slate-100 text-sm">
+                    <!-- Data diload via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-20 text-center px-4">
+            <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5 border border-slate-100 shadow-sm">
+                <i class="fa-regular fa-folder-open text-3xl text-slate-400"></i>
+            </div>
+            <h4 class="text-base font-semibold text-slate-800" id="emptyTitle">Tidak ada data ditemukan</h4>
+            <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto" id="emptyDesc">Kami tidak dapat menemukan data asesi yang cocok dengan kata kunci atau filter yang Anda pilih.</p>
+            <div id="authWarning" class="hidden mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl max-w-lg text-left">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+                    <div>
+                        <h5 class="text-sm font-bold text-amber-800">Akses Diblokir oleh RLS Supabase</h5>
+                        <p class="text-xs text-amber-700 mt-1">Kebijakan tabel Anda diset ke <b>authenticated</b>, tetapi Anda saat ini mengakses sebagai tamu (belum login). Ubah policy menjadi <b>anon</b> di Supabase, atau buat sistem login admin.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL POP-UP LIHAT BERKAS ASESI -->
+<div id="berkasModal" class="fixed inset-0 z-[60] hidden items-center justify-center">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0" id="modalBackdrop"></div>
+    
+    <div class="relative bg-white rounded-2xl max-w-2xl w-full mx-4 shadow-2xl border border-slate-200 transform scale-95 opacity-0 transition-all duration-300 flex flex-col max-h-[90vh]" id="modalContent">
+        <div class="px-6 py-5 border-b border-slate-100 flex items-start justify-between shrink-0">
+            <div class="flex items-center gap-4">
+                <div id="modalAvatar" class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-sm">
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-900 text-lg" id="modalAsesiName">Nama Asesi</h4>
+                    <p class="text-sm font-medium text-brand-orange mt-0.5" id="modalAsesiSkema">Skema</p>
+                </div>
+            </div>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-2.5 rounded-xl transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <div class="p-6 bg-slate-50/50 overflow-y-auto custom-scrollbar flex-1">
+            <div class="flex items-center justify-between mb-4">
+                <h5 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Dokumen Persyaratan</h5>
+                <span id="modalCurrentStatusBadge" class="px-2.5 py-1 text-[10px] font-bold rounded-full bg-slate-200 text-slate-600">Pending</span>
+            </div>
+            
+            <!-- Mengubah grid menjadi List Horizontal memanjang -->
+            <div id="modalFileList" class="flex flex-col space-y-3">
+                <!-- List berkas diletakkan dari JS -->
+            </div>
+        </div>
+
+        <!-- Footer Modal: Update Status & Download ZIP -->
+        <div class="px-6 py-4 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0 rounded-b-2xl">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button onclick="updateAsesiStatus('Lengkap', this)" class="flex-1 sm:flex-none px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check-circle"></i> Verified
+                </button>
+                <button onclick="updateAsesiStatus('Revisi', this)" class="flex-1 sm:flex-none px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-left"></i> Revisi
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button id="btnZip" onclick="downloadSemuaZip()" class="flex-1 sm:flex-none px-4 py-2 bg-slate-900 hover:bg-brand-orange text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-zipper"></i> Unduh ZIP
+                </button>
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PERBAIKAN: Trigger Otomatis saat kembali dari menu lain (Fallback untuk Router SPA) -->
+<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onload="if(typeof fetchAsesiData === 'function') fetchAsesiData()" style="display: none;">
+
+<script>
+    // PERBAIKAN: Menggunakan "var" (bukan const/let) untuk variabel global.
+    // Ini mencegah error "Identifier has already been declared" saat pindah-pindah menu.
+    var SUPABASE_URL = 'https://edqjvmlbgmrqrrsuykwu.supabase.co';
+    var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkcWp2bWxiZ21ycXJyc3V5a3d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTgxNzYsImV4cCI6MjA5NDk5NDE3Nn0.OqMcLJgTLopmRbWsd3FWsP49ZIeDMQaqge3z2cghzpM';
+
+    var schemaTables = [
+        'pendaftaran_auditor', 'pendaftaran_pcua', 'pendaftaran_pcue', 
+        'pendaftaran_pcul', 'pendaftaran_poippu', 'pendaftaran_popal', 
+        'pendaftaran_pppa', 'pendaftaran_pppu'
+    ];
+
+    var allAsesiData = [];
+    var sbClient = window.sbClient || null; 
+    var currentModalAsesi = null;
+
+    // Inisialisasi Supabase aman 
+    if (typeof supabase !== 'undefined' && !sbClient) {
+        sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sbClient = sbClient; // Simpan ke object window agar permanen lintas menu
+    }
+
+    function getInitials(name) {
+        if (!name) return '??';
+        return name.split(' ').map(word => word.charAt(0).toUpperCase()).slice(0, 2).join('');
+    }
+
+    function getAvatarColor(name) {
+        const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
+        const charCode = (name || '').charCodeAt(0) || 0;
+        return colors[charCode % colors.length];
+    }
+
+    function extractBerkas(item) {
+        const fileFields = [
+            { key: 'url_ijazah', label: 'Ijazah' },
+            { key: 'url_ktp', label: 'KTP' },
+            { key: 'url_pas_foto', label: 'Pas Foto' },
+            { key: 'url_cv', label: 'Curriculum Vitae' },
+            { key: 'url_sertifikat', label: 'Sertifikat' },
+            { key: 'url_laporan', label: 'Laporan' },
+            { key: 'url_pendukung', label: 'Dokumen Pendukung' },
+            { key: 'url_siapkerja', label: 'Akun SiapKerja' },
+            { key: 'url_pengalaman_kerja', label: 'Pengalaman Kerja' },
+            { key: 'url_pengalaman', label: 'Pengalaman' }
+        ];
+
+        let berkas = [];
+        fileFields.forEach(field => {
+            if (item[field.key] && typeof item[field.key] === 'string' && item[field.key].trim() !== '' && item[field.key] !== 'NULL') {
+                let ext = 'pdf';
+                try {
+                    // Bersihkan parameter URL (seperti ?token=xxx) untuk mendapatkan ekstensi asli
+                    let cleanUrl = item[field.key].split('?')[0].split('#')[0];
+                    if (cleanUrl.includes('.')) {
+                        const possibleExt = cleanUrl.split('.').pop().toLowerCase();
+                        if (['pdf', 'png', 'jpg', 'jpeg', 'docx', 'doc', 'zip', 'rar', 'xls', 'xlsx'].includes(possibleExt)) {
+                            ext = possibleExt;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Gagal parsing ekstensi:", field.label);
+                }
+                
+                berkas.push({
+                    // Hilangkan karakter spesial dari nama untuk menghindari error saat di-zip
+                    nama_file: `${field.label}_${(item.nama || 'Asesi').replace(/[^a-zA-Z0-9]/g, '_')}.${ext}`,
+                    tipe: field.label,
+                    url: item[field.key]
+                });
+            }
+        });
+        return berkas;
+    }
+
+    async function fetchAsesiData() {
+        const tableBody = document.getElementById('tableBodyAsesi');
+        
+        if (!sbClient) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-16 text-rose-500"><i class="fa-solid fa-circle-exclamation text-3xl mb-4"></i><p>Script Supabase belum terload. Tambahkan script Supabase di file dashboard.html!</p></td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-16"><i class="fa-solid fa-circle-notch fa-spin text-brand-orange text-3xl mb-4"></i><p class="text-sm text-slate-500 font-medium mt-2">Sinkronisasi data dari 8 Skema...</p></td></tr>`;
+
+        try {
+            let combinedData = [];
+            
+            // Fetch ke 8 tabel secara paralel menggunakan Promise.all
+            const fetchPromises = schemaTables.map(table => sbClient.from(table).select('*'));
+            const results = await Promise.all(fetchPromises);
+            
+            console.log("🔥 Hasil respon Supabase:", results);
+
+            results.forEach((result, index) => {
+                if (!result.error && result.data) {
+                    const mappedData = result.data.map(item => {
+                        let rawSkema = item.schema || schemaTables[index].replace('pendaftaran_', '');
+                        return {
+                            id: `${schemaTables[index]}_${item.id || Math.random()}`,
+                            originalId: item.id, // ID asli di tabel
+                            tableName: schemaTables[index], // Nama tabel asli (untuk update status)
+                            nama: item.nama || 'Tanpa Nama',
+                            email: item.email || '-',
+                            asal_instansi: item.instansi || '-',
+                            no_telp: item.whatsapp || '-',
+                            skema: rawSkema.toUpperCase(),
+                            status: item.status_berkas || 'Pending',
+                            berkas: extractBerkas(item)
+                        };
+                    });
+                    combinedData = [...combinedData, ...mappedData];
+                }
+            });
+            
+            allAsesiData = combinedData;
+            applyFilters(); 
+            
+            // Cek apakah data kosong karena belum login (RLS issue) - Penambahan proteksi fallback objek
+            const { data: authData } = await sbClient.auth.getSession();
+            if (combinedData.length === 0 && (!authData || !authData.session)) {
+                document.getElementById('authWarning').classList.remove('hidden');
+            } else {
+                document.getElementById('authWarning').classList.add('hidden');
+            }
+
+        } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-rose-500">Gagal memuat data: ${error.message}</td></tr>`;
+        }
+    }
+
+    function renderTable(data) {
+        const tableBody = document.getElementById('tableBodyAsesi');
+        const emptyState = document.getElementById('emptyState');
+        const totalDataCount = document.getElementById('totalDataCount');
+
+        tableBody.innerHTML = '';
+        if(totalDataCount) totalDataCount.textContent = data.length;
+
+        if (data.length === 0) {
+            emptyState.classList.remove('hidden'); emptyState.classList.add('flex');
+            return;
+        } else {
+            emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
+        }
+
+        data.forEach((item, index) => {
+            let badgeClass = 'bg-slate-50 text-slate-700 border-slate-200/60';
+            let dotClass = 'bg-slate-400';
+            
+            if (item.status === 'Lengkap') { badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/60'; dotClass = 'bg-emerald-500'; }
+            else if (item.status.includes('Pending') || item.status === 'Menunggu Verifikasi') { badgeClass = 'bg-amber-50 text-amber-700 border-amber-200/60'; dotClass = 'bg-amber-500 animate-pulse'; }
+            else if (item.status === 'Revisi') { badgeClass = 'bg-rose-50 text-rose-700 border-rose-200/60'; dotClass = 'bg-rose-500 animate-pulse'; }
+
+            const avatarColor = getAvatarColor(item.nama);
+            const initials = getInitials(item.nama);
+
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-50/80 transition-colors group border-b border-slate-50 last:border-0';
+            row.innerHTML = `
+                <td class="py-4 px-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${avatarColor} shrink-0">${initials}</div>
+                        <div class="min-w-0">
+                            <div class="font-bold text-slate-900 truncate">${item.nama}</div>
+                            <div class="text-xs text-slate-500 mt-0.5 truncate">${item.email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-4 px-6 min-w-[200px]">
+                    <div class="text-sm font-medium text-slate-700">${item.asal_instansi}</div>
+                    <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5"><i class="fa-solid fa-phone text-[10px] text-slate-400"></i> ${item.no_telp}</div>
+                </td>
+                <td class="py-4 px-6">
+                    <span class="inline-flex px-3 py-1.5 rounded-lg bg-slate-100/80 text-slate-700 text-xs font-medium border border-slate-200/60 shadow-xs">${item.skema}</span>
+                </td>
+                <td class="py-4 px-6">
+                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${badgeClass}">
+                        <span class="w-1.5 h-1.5 rounded-full ${dotClass}"></span>${item.status}
+                    </span>
+                </td>
+                <td class="py-4 px-6 text-center">
+                    <button onclick="openModal('${item.id}')" class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-brand-orange hover:border-brand-orange hover:bg-orange-50 transition-all shadow-sm focus:ring-2">
+                        <i class="fa-regular fa-folder-open text-sm"></i>
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    function applyFilters() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const selectedSkema = document.getElementById('filterSkema').value;
+        const selectedStatus = document.getElementById('filterStatus').value;
+
+        const filtered = allAsesiData.filter(item => {
+            const matchKeyword = item.nama.toLowerCase().includes(keyword) || item.email.toLowerCase().includes(keyword) || (item.asal_instansi && item.asal_instansi.toLowerCase().includes(keyword)) || (item.no_telp && item.no_telp.includes(keyword));
+            const matchSkema = selectedSkema === '' || item.skema === selectedSkema;
+            const matchStatus = selectedStatus === '' || item.status === selectedStatus;
+            return matchKeyword && matchSkema && matchStatus;
+        });
+        renderTable(filtered);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('filterSkema').addEventListener('change', applyFilters);
+    document.getElementById('filterStatus').addEventListener('change', applyFilters);
+
+    function openModal(id) {
+        const asesi = allAsesiData.find(d => d.id === id);
+        if(!asesi) return;
+        
+        currentModalAsesi = asesi; // Simpan ke variabel global
+        
+        document.getElementById('modalAsesiName').textContent = asesi.nama;
+        document.getElementById('modalAsesiSkema').textContent = asesi.skema;
+        
+        // Atur Badge Status di Modal
+        const statusBadge = document.getElementById('modalCurrentStatusBadge');
+        statusBadge.textContent = asesi.status;
+        if(asesi.status === 'Lengkap') statusBadge.className = 'px-2.5 py-1 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700';
+        else if(asesi.status === 'Revisi') statusBadge.className = 'px-2.5 py-1 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700';
+        else statusBadge.className = 'px-2.5 py-1 text-[10px] font-bold rounded-full bg-amber-100 text-amber-700';
+
+        const avatarDiv = document.getElementById('modalAvatar');
+        avatarDiv.className = `w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-sm ${getAvatarColor(asesi.nama)}`;
+        avatarDiv.textContent = getInitials(asesi.nama);
+
+        const fileListContainer = document.getElementById('modalFileList');
+        fileListContainer.innerHTML = '';
+        const berkasArray = asesi.berkas || [];
+        
+        if (berkasArray.length === 0) {
+            fileListContainer.innerHTML = `<div id="modalEmptyState" class="py-10 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 mt-2"><p class="text-sm font-medium text-slate-600">Asesi belum mengunggah dokumen apapun.</p></div>`;
+        } else {
+            berkasArray.forEach(file => {
+                let icon = 'fa-file-lines'; let iconColor = 'text-blue-500'; let bgIcon = 'bg-blue-50';
+                let ext = file.nama_file.split('.').pop().toLowerCase();
+                
+                if(ext === 'pdf') { icon = 'fa-file-pdf'; iconColor = 'text-rose-500'; bgIcon = 'bg-rose-50'; }
+                else if (['jpg','jpeg','png'].includes(ext)) { icon = 'fa-file-image'; iconColor = 'text-emerald-500'; bgIcon = 'bg-emerald-50'; }
+                // Tambahan UI Ikon khusus Word & Archive
+                else if (['doc','docx'].includes(ext)) { icon = 'fa-file-word'; iconColor = 'text-blue-600'; bgIcon = 'bg-blue-100'; }
+                else if (['zip','rar'].includes(ext)) { icon = 'fa-file-zipper'; iconColor = 'text-amber-600'; bgIcon = 'bg-amber-50'; }
+
+                // LOGIKA PREVIEW DOKUMEN WORD DI BROWSER
+                let viewUrl = file.url;
+                if (['doc', 'docx', 'xls', 'xlsx'].includes(ext)) {
+                    // Gunakan Microsoft Office Online Viewer untuk preview file docx tanpa mendownload
+                    viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(file.url)}`;
+                }
+
+                // Desain Horizontal List
+                fileListContainer.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-brand-orange hover:shadow-sm transition-all duration-300">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-lg ${bgIcon} ${iconColor} flex items-center justify-center shrink-0">
+                                <i class="fa-solid ${icon} text-lg"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-slate-800 truncate" title="${file.nama_file}">${file.nama_file}</p>
+                                <p class="text-xs text-slate-500 font-medium mt-0.5 uppercase">${file.tipe}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 shrink-0 ml-4">
+                            <a href="${viewUrl}" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-brand-orange hover:text-white hover:border-brand-orange text-xs font-semibold transition-all shadow-sm">
+                                <i class="fa-solid fa-eye md:mr-1"></i> <span class="hidden md:inline">Lihat</span>
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        const modal = document.getElementById('berkasModal');
+        const backdrop = document.getElementById('modalBackdrop');
+        const modalContent = document.getElementById('modalContent');
+        
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        setTimeout(() => {
+            backdrop.classList.remove('opacity-0');
+            modalContent.classList.remove('opacity-0', 'scale-95');
+        }, 10);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('berkasModal');
+        const backdrop = document.getElementById('modalBackdrop');
+        const modalContent = document.getElementById('modalContent');
+        
+        backdrop.classList.add('opacity-0');
+        modalContent.classList.add('opacity-0', 'scale-95');
+        setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 300);
+    }
+
+    // --- FUNGSI UPDATE STATUS ---
+    async function updateAsesiStatus(newStatus, targetBtn) {
+        if (!currentModalAsesi || !sbClient) return;
+
+        const originalBtnText = newStatus === 'Lengkap' ? '<i class="fa-solid fa-check-circle"></i> Verified' : '<i class="fa-solid fa-rotate-left"></i> Revisi';
+        
+        // Memastikan targetBtn aman dari ReferenceError event
+        if (!targetBtn) {
+            targetBtn = window.event ? window.event.currentTarget : document.createElement('button');
+        }
+        
+        targetBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Loading...';
+        targetBtn.disabled = true;
+
+        try {
+            // Update tabel di Supabase
+            const { error } = await sbClient
+                .from(currentModalAsesi.tableName)
+                .update({ status_berkas: newStatus })
+                .eq('id', currentModalAsesi.originalId);
+
+            if (error) throw error;
+
+            // Update data lokal agar tabel refresh tanpa fetch ulang keseluruhan
+            currentModalAsesi.status = newStatus;
+            applyFilters(); 
+            
+            // Tutup modal dan beri notifikasi sederhana
+            closeModal();
+            setTimeout(() => alert(`Status berhasil diubah menjadi ${newStatus}!`), 350);
+
+        } catch (error) {
+            console.error("Error updating status:", error);
+            alert("Gagal mengubah status. Pastikan RLS Supabase mengizinkan operasi UPDATE.");
+        } finally {
+            targetBtn.innerHTML = originalBtnText;
+            targetBtn.disabled = false;
+        }
+    }
+
+    // --- FUNGSI DOWNLOAD SEMUA (.ZIP) ---
+    async function downloadSemuaZip() {
+        if (!currentModalAsesi || currentModalAsesi.berkas.length === 0) {
+            alert("Tidak ada dokumen yang bisa diunduh.");
+            return;
+        }
+
+        const btnZip = document.getElementById('btnZip');
+        const originalText = btnZip.innerHTML;
+        btnZip.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memproses ZIP...';
+        btnZip.disabled = true;
+        btnZip.classList.add('opacity-75');
+
+        try {
+            if (typeof JSZip === 'undefined') throw new Error("Library JSZip belum termuat di browser.");
+
+            const zip = new JSZip();
+            const folderName = `Berkas_${currentModalAsesi.nama.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const folder = zip.folder(folderName);
+            let successCount = 0;
+            let failedFiles = [];
+
+            // Fetch semua file satu per satu
+            const fetchPromises = currentModalAsesi.berkas.map(async (file) => {
+                try {
+                    // Gunakan mode no-store untuk mencegah bug cache CORS
+                    const response = await fetch(file.url, { cache: 'no-store' });
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        folder.file(file.nama_file, blob);
+                        successCount++;
+                    } else {
+                        failedFiles.push(file.nama_file);
+                    }
+                } catch (err) {
+                    console.error(`Gagal fetch URL (Biasanya karena blokir CORS) pada ${file.nama_file}`, err);
+                    failedFiles.push(file.nama_file);
+                }
+            });
+
+            await Promise.all(fetchPromises);
+
+            if (successCount > 0) {
+                // ZIP Berhasil
+                const content = await zip.generateAsync({ type: "blob" });
+                saveAs(content, `${folderName}.zip`);
+                
+                if (failedFiles.length > 0) {
+                    console.warn("File ini gagal masuk ZIP:", failedFiles);
+                }
+            } else {
+                // SISTEM FALLBACK JIKA FETCH DIBLOKIR OLEH SUPABASE
+                const fallback = confirm("Gagal menyatukan ke ZIP karena diblokir oleh sistem keamanan Supabase (CORS).\n\nApakah Anda ingin mengunduh/membuka file satu per satu secara otomatis di Tab Baru sebagai alternatif?");
+                
+                if (fallback) {
+                    currentModalAsesi.berkas.forEach((file, index) => {
+                        setTimeout(() => {
+                            window.open(file.url, '_blank');
+                        }, index * 800); // Beri jeda 800ms agar browser tidak mendeteksinya sebagai pop-up spam
+                    });
+                }
+            }
+
+        } catch (error) {
+            console.error("Gagal membuat ZIP:", error);
+            alert("Terjadi kesalahan sistem saat memproses ZIP: " + error.message);
+        } finally {
+            btnZip.innerHTML = originalText;
+            btnZip.disabled = false;
+            btnZip.classList.remove('opacity-75');
+        }
+    }
+
+    // Jalankan fetch pertama kali
+    fetchAsesiData();
+</script>

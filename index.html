@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Dashboard Admin LSP</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase JS v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            orange: '#F97316',
+                            'orange-hover': '#EA580C',
+                            darkgreen: '#092C22',
+                            'darkgreen-surface': '#0D382C',
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Animasi delay untuk background blobs */
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        
+        /* Custom input autofill background fix */
+        input:-webkit-autofill {
+            -webkit-box-shadow: 0 0 0 50px white inset;
+            -webkit-text-fill-color: #334155;
+        }
+    </style>
+</head>
+<body class="bg-brand-darkgreen font-sans text-slate-800 antialiased min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+
+    <!-- Latar Belakang Glowing Orbs (Modern Design) -->
+    <div class="absolute inset-0 w-full h-full overflow-hidden z-0">
+        <!-- Lingkaran Oranye di Kiri Atas -->
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-orange/40 rounded-full mix-blend-screen filter blur-[100px] opacity-80 animate-blob"></div>
+        <!-- Lingkaran Hijau Terang di Kanan Atas -->
+        <div class="absolute top-[20%] right-[-10%] w-96 h-96 bg-emerald-500/30 rounded-full mix-blend-screen filter blur-[100px] opacity-70 animate-blob animation-delay-2000"></div>
+        <!-- Lingkaran Oranye Gelap di Bawah -->
+        <div class="absolute -bottom-32 left-[20%] w-[40rem] h-[40rem] bg-brand-orange/20 rounded-full mix-blend-screen filter blur-[120px] opacity-60 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <div class="w-full max-w-[26rem] relative z-10 opacity-0 animate-fade-in-up">
+        
+        <!-- Card Glassmorphism -->
+        <div class="bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.3)] border border-white/40 overflow-hidden relative">
+            
+            <!-- Aksen Garis Oranye di Atas Card -->
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-orange via-amber-400 to-brand-orange"></div>
+
+            <div class="p-8 sm:p-10">
+                <!-- Logo & Header -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-orange to-brand-orange-hover text-white shadow-lg shadow-orange-500/30 mb-5 transform transition-transform hover:scale-105 duration-300">
+                        <i class="fa-solid fa-award text-3xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Portal <span class="text-brand-orange">Admin</span></h1>
+                    <p class="text-sm text-slate-500 mt-2 font-medium">Sistem Informasi Manajemen Sertifikasi</p>
+                </div>
+                
+                <!-- Notifikasi Error -->
+                <div id="errorAlert" class="hidden mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-sm rounded-xl flex items-start gap-3 transition-all duration-300">
+                    <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+                    <div id="errorMessage" class="font-medium leading-relaxed">Email atau password salah!</div>
+                </div>
+
+                <form id="loginForm" class="space-y-5">
+                    
+                    <!-- Input Email -->
+                    <div class="space-y-2">
+                        <label for="email" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Email Admin</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-brand-orange text-slate-400">
+                                <i class="fa-regular fa-envelope"></i>
+                            </div>
+                            <input 
+                                type="email" 
+                                id="email" 
+                                required
+                                class="block w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-orange/10 focus:border-brand-orange focus:bg-white outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700" 
+                                placeholder="admin@lsp.or.id"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Input Password -->
+                    <div class="space-y-2">
+                        <label for="password" class="block text-xs font-bold text-slate-600 uppercase tracking-wider">Kata Sandi</label>
+                        <div class="relative group">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-brand-orange text-slate-400">
+                                <i class="fa-solid fa-lock"></i>
+                            </div>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                required
+                                class="block w-full pl-11 pr-12 py-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-orange/10 focus:border-brand-orange focus:bg-white outline-none transition-all placeholder:text-slate-400 font-medium text-slate-700" 
+                                placeholder="••••••••"
+                            >
+                            <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-brand-orange focus:outline-none transition-colors">
+                                <i id="eyeIcon" class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tombol Login -->
+                    <button 
+                        type="submit" 
+                        id="loginBtn"
+                        class="w-full mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-brand-darkgreen to-brand-darkgreen-surface hover:from-slate-900 hover:to-slate-800 text-white py-3.5 px-4 rounded-xl text-sm font-bold transition-all shadow-lg shadow-brand-darkgreen/30 focus:ring-4 focus:ring-brand-darkgreen/20 relative overflow-hidden group"
+                    >
+                        <span id="btnText">Masuk Sekarang</span>
+                        <i id="btnIcon" class="fa-solid fa-arrow-right-to-bracket group-hover:translate-x-1 transition-transform"></i>
+                        <!-- Loading spinner (hidden) -->
+                        <i id="btnLoading" class="fa-solid fa-circle-notch fa-spin hidden absolute"></i>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Footer Bawah Card -->
+            <div class="px-8 py-5 bg-slate-50/80 border-t border-slate-100/60 text-center">
+                <p class="text-xs font-medium text-slate-400">Lembaga Sertifikasi Profesi &copy; 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Konfigurasi Supabase LIVE (Sesuai credentials dari kamu)
+        const SUPABASE_URL = 'https://edqjvmlbgmrqrrsuykwu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkcWp2bWxiZ21ycXJyc3V5a3d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTgxNzYsImV4cCI6MjA5NDk5NDE3Nn0.OqMcLJgTLopmRbWsd3FWsP49ZIeDMQaqge3z2cghzpM';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 1. Cek Sesi (Kalau udah login, lempar ke dashboard)
+        async function checkExistingSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                window.location.href = 'dashboard.html';
+            }
+        }
+        checkExistingSession();
+
+        // 2. Fitur Mata Password
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+
+        // 3. Proses Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Ambil Input
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // Ambil Elemen UI
+            const btn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = document.getElementById('btnIcon');
+            const btnLoading = document.getElementById('btnLoading');
+            const errorAlert = document.getElementById('errorAlert');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Set ke mode loading
+            errorAlert.classList.add('hidden');
+            btn.disabled = true;
+            btnText.classList.add('opacity-0');
+            btnIcon.classList.add('opacity-0');
+            btnLoading.classList.remove('hidden');
+
+            try {
+                // Tembak API Supabase Auth
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (error) throw error;
+
+                // Jika Berhasil, pindah ke dashboard
+                window.location.href = 'dashboard.html';
+
+            } catch (error) {
+                // Jika Gagal, tangkap pesannya
+                console.error("Login Error:", error);
+                let pesanError = "Terjadi kesalahan sistem saat login.";
+                
+                if (error.message.includes('Invalid login credentials')) {
+                    pesanError = "Email atau kata sandi yang Anda masukkan salah.";
+                } else if (error.message.includes('Email not confirmed')) {
+                    pesanError = "Email belum diverifikasi. Cek inbox Anda.";
+                } else {
+                    pesanError = error.message;
+                }
+
+                // Tampilkan error
+                errorMessage.textContent = pesanError;
+                errorAlert.classList.remove('hidden');
+                
+                // Kembalikan tombol seperti semula
+                btn.disabled = false;
+                btnText.classList.remove('opacity-0');
+                btnIcon.classList.remove('opacity-0');
+                btnLoading.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

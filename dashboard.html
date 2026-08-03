@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin LSP</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            orange: '#F97316', // Orange Clean / Accent
+                            'orange-hover': '#EA580C',
+                            darkgreen: '#092C22', // Hijau Gelap Sidebar
+                            'darkgreen-surface': '#0D382C', // Hover Sidebar
+                            'darkgreen-border': '#134A3B',
+                            lightbg: '#FAFAFA'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Smooth Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FAFAFA;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #E5E7EB;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #D1D5DB;
+        }
+
+        /* Sidebar Left Active Indicator Pill Style */
+        .sidebar-item .active-pill {
+            opacity: 0;
+            height: 0;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar-item.active .active-pill {
+            opacity: 1;
+            height: 24px;
+        }
+
+        /* Active Item Text & Icon Effects */
+        .sidebar-item.active {
+            color: #F97316; /* Orange text */
+            font-weight: 600;
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .sidebar-item.active i {
+            color: #F97316; /* Orange Icon */
+        }
+
+        /* Content Fade In Animation */
+        .page-fade-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-brand-lightbg font-sans text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 hidden md:hidden transition-opacity"></div>
+
+    <!-- SIDEBAR (HIJAU GELAP DENGAN AKSEN OREN - STICKY FIXED DESKTOP) -->
+    <aside id="sidebar" class="fixed md:sticky md:top-0 md:h-screen inset-y-0 left-0 z-50 w-64 shrink-0 bg-brand-darkgreen border-r border-brand-darkgreen-border flex flex-col justify-between transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out text-emerald-100/70 shadow-2xl md:shadow-none">
+        <div class="flex flex-col h-full overflow-hidden">
+            <!-- Logo Header -->
+            <div class="h-20 shrink-0 px-6 flex items-center justify-between border-b border-brand-darkgreen-border">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-brand-orange text-white flex items-center justify-center font-bold text-lg shadow-md shadow-orange-950/20">
+                        <i class="fa-solid fa-award"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-white tracking-tight text-base">LSP <span class="text-brand-orange">Admin</span></h1>
+                        <p class="text-[10px] text-emerald-400/80 font-semibold tracking-wider uppercase">Sistem Sertifikasi</p>
+                    </div>
+                </div>
+                <!-- Close Button Mobile -->
+                <button onclick="toggleSidebar()" class="md:hidden text-emerald-300/60 hover:text-white p-1 rounded-lg focus:outline-none">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links (Scrollable on short mobile screens) -->
+            <nav class="py-4 space-y-1 flex-1 overflow-y-auto">
+                
+                <!-- 1. Beranda -->
+                <button onclick="switchTab('beranda', 'pages/beranda.html', this)" class="sidebar-item active group relative w-full flex items-center space-x-3 px-6 py-3 text-sm text-emerald-200/70 hover:text-white hover:bg-brand-darkgreen-surface transition-all">
+                    <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-1.5 bg-brand-orange rounded-r-full"></span>
+                    <i class="fa-solid fa-chart-pie text-base text-emerald-400/60 group-hover:text-white w-5 text-center transition-colors"></i>
+                    <span>Beranda</span>
+                </button>
+
+                <!-- 2. Berkas Asesi -->
+                <button onclick="switchTab('berkas-asesi', 'pages/berkas-asesi.html', this)" class="sidebar-item group relative w-full flex items-center space-x-3 px-6 py-3 text-sm text-emerald-200/70 hover:text-white hover:bg-brand-darkgreen-surface transition-all">
+                    <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-1.5 bg-brand-orange rounded-r-full"></span>
+                    <i class="fa-solid fa-folder-open text-base text-emerald-400/60 group-hover:text-white w-5 text-center transition-colors"></i>
+                    <span>Berkas Asesi</span>
+                </button>
+
+                <!-- 3. Jadwal Uji -->
+                <button onclick="switchTab('jadwal-uji', 'pages/jadwal-uji.html', this)" class="sidebar-item group relative w-full flex items-center space-x-3 px-6 py-3 text-sm text-emerald-200/70 hover:text-white hover:bg-brand-darkgreen-surface transition-all">
+                    <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-1.5 bg-brand-orange rounded-r-full"></span>
+                    <i class="fa-solid fa-calendar-check text-base text-emerald-400/60 group-hover:text-white w-5 text-center transition-colors"></i>
+                    <span>Jadwal Uji</span>
+                </button>
+
+                <!-- 4. Administrasi -->
+                <button onclick="switchTab('administrasi', 'pages/administrasi.html', this)" class="sidebar-item group relative w-full flex items-center space-x-3 px-6 py-3 text-sm text-emerald-200/70 hover:text-white hover:bg-brand-darkgreen-surface transition-all">
+                    <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-1.5 bg-brand-orange rounded-r-full"></span>
+                    <i class="fa-solid fa-file-signature text-base text-emerald-400/60 group-hover:text-white w-5 text-center transition-colors"></i>
+                    <span>Administrasi</span>
+                </button>
+
+                <!-- 5. Keuangan -->
+                <button onclick="switchTab('keuangan', 'pages/keuangan.html', this)" class="sidebar-item group relative w-full flex items-center space-x-3 px-6 py-3 text-sm text-emerald-200/70 hover:text-white hover:bg-brand-darkgreen-surface transition-all">
+                    <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-1.5 bg-brand-orange rounded-r-full"></span>
+                    <i class="fa-solid fa-wallet text-base text-emerald-400/60 group-hover:text-white w-5 text-center transition-colors"></i>
+                    <span>Keuangan</span>
+                </button>
+
+                <!-- 7. Jadwal -->
+                <button onclick="switchTab('jadwal', 'pages/jadwal.html', this)" class="sidebar-item group relative w-full flex items-center space-x-3 px-6 py-3 text-sm text-emerald-200/70 hover:text-white hover:bg-brand-darkgreen-surface transition-all">
+                    <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-1.5 bg-brand-orange rounded-r-full"></span>
+                    <i class="fa-solid fa-calendar-days text-base text-emerald-400/60 group-hover:text-white w-5 text-center transition-colors"></i>
+                    <span>Jadwal</span>
+                </button>
+
+                <!-- 8. Arsip -->
+                <button onclick="switchTab('arsip', 'pages/arsip.html', this)" class="sidebar-item group relative w-full flex items-center space-x-3 px-6 py-3 text-sm text-emerald-200/70 hover:text-white hover:bg-brand-darkgreen-surface transition-all">
+                    <span class="active-pill absolute left-0 top-1/2 -translate-y-1/2 w-1.5 bg-brand-orange rounded-r-full"></span>
+                    <i class="fa-solid fa-box-archive text-base text-emerald-400/60 group-hover:text-white w-5 text-center transition-colors"></i>
+                    <span>Arsip</span>
+                </button>
+
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Admin -->
+        <div class="p-4 border-t border-brand-darkgreen-border bg-black/10 shrink-0">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-brand-orange/20 border border-brand-orange/40 text-brand-orange flex items-center justify-center font-bold text-xs shrink-0">
+                    AD
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-white truncate">Administrator</p>
+                    <p class="text-[10px] text-emerald-300/60 truncate">admin@lsp.or.id</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="flex-1 flex flex-col min-w-0 min-h-screen bg-white">
+        
+        <!-- HEADER NAVBAR -->
+        <header class="h-20 bg-white border-b border-slate-100 px-4 sm:px-6 md:px-8 flex items-center justify-between sticky top-0 z-30">
+            <div class="flex items-center space-x-3 sm:space-x-4 min-w-0">
+                <!-- Mobile Toggle -->
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-600 hover:text-brand-orange p-2 rounded-lg hover:bg-slate-50 transition-colors focus:outline-none">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <h2 id="currentPageTitle" class="text-base sm:text-lg font-bold text-slate-800 truncate">Beranda</h2>
+            </div>
+
+            <!-- Status Indicator -->
+            <div class="flex items-center space-x-3 shrink-0">
+                <span class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-medium bg-emerald-50 text-emerald-600 border border-emerald-200/60">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="hidden sm:inline">Sistem </span>Online
+                </span>
+            </div>
+        </header>
+
+        <!-- CONTAINER UNTUK MEMUAT KONTEN EXTERNAL FILE VIA FETCH -->
+        <main id="appContent" class="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
+            <!-- Content from external files will be injected here dynamically -->
+        </main>
+    </div>
+
+    <script>
+        // Toggle Mobile Sidebar Drawer & Prevent Body Scrolling
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+            
+            // Prevent body background scroll when drawer is open on mobile
+            if (window.innerWidth < 768) {
+                document.body.classList.toggle('overflow-hidden', isClosed);
+            }
+        }
+
+        // Mapping Title berdasarkan Tab ID
+        const tabTitles = {
+            'beranda': 'Beranda',
+            'berkas-asesi': 'Berkas Asesi',
+            'jadwal-uji': 'Jadwal Uji',
+            'administrasi': 'Administrasi',
+            'keuangan': 'Keuangan',
+            'jadwal': 'Jadwal',
+            'arsip': 'Arsip'
+        };
+
+        // Switch Tab & Load External File Dynamically
+        async function switchTab(tabId, fileUrl, element) {
+            const container = document.getElementById('appContent');
+
+            // 1. Highlight Active Menu Item
+            const allSidebarItems = document.querySelectorAll('.sidebar-item');
+            allSidebarItems.forEach(item => item.classList.remove('active'));
+
+            if (element) {
+                element.classList.add('active');
+            }
+
+            // 2. Update Dynamic Header Title
+            const titleElement = document.getElementById('currentPageTitle');
+            if (titleElement && tabTitles[tabId]) {
+                titleElement.textContent = tabTitles[tabId];
+            }
+
+            // Auto-close sidebar on mobile view
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (!sidebar.classList.contains('-translate-x-full')) {
+                    toggleSidebar();
+                }
+            }
+
+            // 3. Tampilkan Loading State
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-brand-orange"></i>
+                    <p class="text-xs font-medium">Memuat halaman ${tabTitles[tabId]}...</p>
+                </div>
+            `;
+
+            // 4. Fetch External HTML File
+            try {
+                const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const htmlContent = await response.text();
+                
+                // Render HTML dari file luar dengan animasi Fade In
+                container.innerHTML = `<div class="page-fade-in">${htmlContent}</div>`;
+
+                const scripts = container.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            } catch (error) {
+                // Tampilan fallback ramah jika file luar belum ada
+                container.innerHTML = `
+                    <div class="page-fade-in border border-dashed border-slate-200 rounded-2xl p-6 sm:p-12 text-center bg-slate-50/50">
+                        <div class="w-12 h-12 rounded-full bg-orange-100 text-brand-orange flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-file-code text-lg"></i>
+                        </div>
+                        <h3 class="font-semibold text-slate-700 text-base mb-1">File Luar Belum Dibuat</h3>
+                        <p class="text-xs text-slate-500 max-w-md mx-auto mb-4">
+                            Sistem mencoba memuat dari <code class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-800">${fileUrl}</code>. Buat file tersebut untuk mengisi konten menu ini.
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        // Initial Load Default Tab (Beranda)
+        window.addEventListener('DOMContentLoaded', () => {
+            const firstTab = document.querySelector('.sidebar-item');
+            switchTab('beranda', 'pages/beranda.html', firstTab);
+        });
+    </script>
+</body>
+</html>
