@@ -71,6 +71,8 @@
                     <option value="POPAL">POPAL</option>
                     <option value="PPPA">PPPA</option>
                     <option value="PPPU">PPPU</option>
+                    <!-- SKEMA BARU DITAMBAHKAN DI SINI -->
+                    <option value="OPERATOR_PENYIMPANAN">Operator Penyimpanan</option> 
                 </select>
                 <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
             </div>
@@ -172,7 +174,7 @@
                     <i class="fa-solid fa-file-zipper"></i> Unduh ZIP
                 </button>
                 <button onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors">
-                    Tutup
+                    <i class="fa-solid fa-xmark"></i> Tutup
                 </button>
             </div>
         </div>
@@ -188,6 +190,7 @@
     var SUPABASE_URL = 'https://edqjvmlbgmrqrrsuykwu.supabase.co';
     var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkcWp2bWxiZ21ycXJyc3V5a3d1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0MTgxNzYsImV4cCI6MjA5NDk5NDE3Nn0.OqMcLJgTLopmRbWsd3FWsP49ZIeDMQaqge3z2cghzpM';
 
+    // UPDATE: Array schemaTables SUDAH mengandung pendaftaran_operator_penyimpanan 
     var schemaTables = [
         'pendaftaran_auditor', 'pendaftaran_pcua', 'pendaftaran_pcue', 
         'pendaftaran_pcul', 'pendaftaran_poippu', 'pendaftaran_popal', 
@@ -265,12 +268,12 @@
             return;
         }
 
-        tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-16"><i class="fa-solid fa-circle-notch fa-spin text-brand-orange text-3xl mb-4"></i><p class="text-sm text-slate-500 font-medium mt-2">Sinkronisasi data dari 8 Skema...</p></td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-16"><i class="fa-solid fa-circle-notch fa-spin text-brand-orange text-3xl mb-4"></i><p class="text-sm text-slate-500 font-medium mt-2">Sinkronisasi data dari ${schemaTables.length} Skema...</p></td></tr>`;
 
         try {
             let combinedData = [];
             
-            // Fetch ke 8 tabel secara paralel menggunakan Promise.all
+            // Fetch ke semua tabel secara paralel menggunakan Promise.all
             const fetchPromises = schemaTables.map(table => sbClient.from(table).select('*'));
             const results = await Promise.all(fetchPromises);
             
